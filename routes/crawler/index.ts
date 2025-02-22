@@ -6,7 +6,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /crawler/url:
+ * /v1/crawler/url:
  *   post:
  *     summary: Process URLs and generate embeddings
  *     description: Takes an array of URLs and processes them to generate embeddings
@@ -74,7 +74,7 @@ router.post("/url", async (req: Request, res: Response) => {
         const startTime = performance.now();
 
         console.log("Starting crawl with URLs:", validUrls.length);
-        console.log("Max URLs to crawl:", maxUrls.length);
+        console.log("Max URLs to crawl:", maxUrls);
 
         // Crawl URLs and get all linked pages
         const crawlResult = await crawlAllLinks(validUrls, { 

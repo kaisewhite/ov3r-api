@@ -3,8 +3,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import crawlerRoutes from '../routes/crawler';
-import queryRoutes from '../routes/query';
+import crawlerRoutes from '../routes/crawler/index';
+import queryRoutes from '../routes/query/index';
 
 // Load environment variables
 config({ path: '.env' });
