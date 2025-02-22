@@ -2,7 +2,6 @@ import { CheerioCrawler, EnqueueStrategy, Configuration } from 'crawlee';
 import robotsParser from 'robots-parser';
 import fs from 'fs';
 import path from 'path';
-
 // Function to check robots.txt
 async function canCrawl(url: string) {
     try {
@@ -22,7 +21,7 @@ async function canCrawl(url: string) {
  * @param url The URL of the file to download.
  * @param outputDir The directory to save the file in.
  */
-async function downloadFile(url: string, outputDir: string) {
+/* async function downloadFile(url: string, outputDir: string) {
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -53,7 +52,7 @@ async function downloadFile(url: string, outputDir: string) {
     } catch (error) {
         console.error(`Error downloading ${url}:`, error);
     }
-}
+} */
 
 interface CrawlResult {
     webUrls: string[];
@@ -103,7 +102,7 @@ export async function crawlAllLinks(
             if (response.headers['content-type']?.includes('application/pdf')) {
                 console.log(`Found PDF: ${request.url}`);
                 pdfUrls.add(request.url);
-                await downloadFile(request.url, pdfOutputDir);
+                //await downloadFile(request.url, pdfOutputDir);
                 
                 if (options.maxUrls && (webUrls.size + pdfUrls.size) >= options.maxUrls) {
                     shouldStop = true;

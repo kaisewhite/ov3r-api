@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import { processUrlsToEmbeddings } from "../../utils/process_urls_to_embeddings";
 import { crawlAllLinks } from "../../utils/crawl_all_links";
+import { uploadFilesFromUrls } from "../../utils/upload_to_s3_bucket";
 
 const router = express.Router();
 
@@ -99,6 +100,7 @@ router.post("/url", async (req: Request, res: Response) => {
           // Process URLs and generate embeddings
           console.log("Starting embedding generation for", crawlResult.webUrls.length, "URLs");
           await processUrlsToEmbeddings(crawlResult.webUrls, state);
+          //await uploadFilesFromUrls(crawlResult.pdfUrls, process.env.S3_BUCKET_NAME || "", `states/${state}`);
           console.log("Finished generating embeddings");
 
           const totalDuration = (performance.now() - startTime) / 1000;
