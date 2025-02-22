@@ -1,22 +1,13 @@
-import pkg from 'pg';
-const { Pool } = pkg;
+import prisma from "../../configurations/prisma/index.js";
 
-const dbConfig = {
-    host: process.env.PGHOST,
-    port: parseInt(process.env.PGPORT || '5432'),
-    user: process.env.PGUSER,
-    password: process.env.PGPASSWORD,
-    database: process.env.PGDATABASE,
-};
-
-const pool = new Pool(dbConfig);
+type CrawlerJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 interface CrawlerJob {
     id: string;
     state: string;
     urls: string[];
     max_urls?: number;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: CrawlerJobStatus;
     web_urls_found?: number;
     pdf_urls_found?: number;
     error_message?: string;
@@ -28,186 +19,188 @@ interface CrawlerJob {
 }
 
 /**
+ * Helper function to sanitize nullable Prisma fields
+ */
+function sanitizeJob(job: any): CrawlerJob {
+    return {
+        ...job,
+        // Handle both JSON string and raw string array from Prisma
+        urls: typeof job.urls === 'string' ? 
+            (job.urls.startsWith('[') ? JSON.parse(job.urls) : [job.urls]) : 
+            (Array.isArray(job.urls) ? job.urls : []),
+        max_urls: job.max_urls ?? undefined,
+        web_urls_found: job.web_urls_found ?? undefined,
+        pdf_urls_found: job.pdf_urls_found ?? undefined,
+        error_message: job.error_message ?? undefined,
+        started_at: job.started_at ?? undefined,
+        completed_at: job.completed_at ?? undefined,
+        duration_seconds: job.duration_seconds ? Number(job.duration_seconds) : undefined,
+        created_at: job.created_at ?? undefined,
+        updated_at: job.updated_at ?? undefined
+    };
+}
+
+/**
  * Creates a new crawler job in the database
- * @param state Two-letter state code
- * @param urls Array of URLs to crawl
- * @param maxUrls Maximum number of URLs to crawl (optional)
- * @returns The created job record
  */
 export async function createCrawlerJob(state: string, urls: string[], maxUrls?: number): Promise<CrawlerJob> {
-    const client = await pool.connect();
     try {
-        const result = await client.query(
-            `INSERT INTO crawler_jobs (state, urls, max_urls, status)
-             VALUES ($1, $2, $3, 'pending')
-             RETURNING *`,
-            [state, JSON.stringify(urls), maxUrls || 1000]
-        );
-        return result.rows[0];
-    } finally {
-        client.release();
+        // Ensure urls is an array and convert to JSON string
+        const urlsArray = Array.isArray(urls) ? urls : [urls];
+        
+        const result = await prisma.crawler_jobs.create({
+            data: {
+                state,
+                urls: urlsArray, // Prisma will handle the JSON serialization
+                max_urls: maxUrls || 1000,
+                status: 'pending'
+            }
+        });
+
+        return sanitizeJob(result);
+    } catch (error) {
+        console.error("Error in createCrawlerJob:", error);
+        throw new Error("Failed to create crawler job.");
     }
 }
 
 /**
  * Updates the status of a crawler job
- * @param jobId UUID of the job to update
- * @param status New status
- * @param data Additional data to update
  */
 export async function updateCrawlerJobStatus(
     jobId: string,
-    status: CrawlerJob['status'],
+    status: CrawlerJobStatus,
     data?: Partial<CrawlerJob>
 ): Promise<void> {
-    const client = await pool.connect();
     try {
-        // First, get the current job to calculate duration if needed
-        let currentJob;
+        const updateData: any = { status, ...data };
+
+        if (status === 'processing' && !data?.started_at) {
+            updateData.started_at = new Date();
+        }
+
         if (status === 'completed' || status === 'failed') {
-            const result = await client.query(
-                'SELECT started_at FROM crawler_jobs WHERE id = $1',
-                [jobId]
-            );
-            currentJob = result.rows[0];
-        }
-
-        const updates: string[] = ['status = $2'];
-        const values: any[] = [jobId, status];
-        let paramCount = 3;
-
-        if (data) {
-            if (status === 'processing' && !data.started_at) {
-                data.started_at = new Date();
-            }
-            if (status === 'completed' || status === 'failed') {
-                const now = new Date();
-                data.completed_at = now;
-                
-                // Calculate duration if we have a started_at time
-                if (currentJob?.started_at) {
-                    data.duration_seconds = (now.getTime() - new Date(currentJob.started_at).getTime()) / 1000;
-                }
-            }
-
-            Object.entries(data).forEach(([key, value]) => {
-                if (value !== undefined) {
-                    updates.push(`${key} = $${paramCount}`);
-                    values.push(value);
-                    paramCount++;
-                }
+            const currentJob = await prisma.crawler_jobs.findUnique({
+                where: { id: jobId },
+                select: { started_at: true }
             });
+
+            const now = new Date();
+            updateData.completed_at = now;
+
+            if (currentJob?.started_at) {
+                updateData.duration_seconds = (now.getTime() - new Date(currentJob.started_at).getTime()) / 1000;
+            }
         }
 
-        await client.query(
-            `UPDATE crawler_jobs 
-             SET ${updates.join(', ')}
-             WHERE id = $1`,
-            values
-        );
-    } finally {
-        client.release();
+        // Handle urls field if present
+        if (updateData.urls) {
+            const urlsArray = Array.isArray(updateData.urls) ? updateData.urls : [updateData.urls];
+            updateData.urls = urlsArray; // Let Prisma handle JSON serialization
+        }
+
+        await prisma.crawler_jobs.update({
+            where: { id: jobId },
+            data: updateData
+        });
+    } catch (error) {
+        console.error(`Error updating crawler job ${jobId}:`, error);
+        throw new Error(`Failed to update crawler job ${jobId}.`);
     }
 }
 
 /**
  * Gets a crawler job by its ID
- * @param jobId UUID of the job to retrieve
- * @returns The job record or null if not found
  */
 export async function getCrawlerJob(jobId: string): Promise<CrawlerJob | null> {
-    const client = await pool.connect();
     try {
-        const result = await client.query(
-            'SELECT * FROM crawler_jobs WHERE id = $1',
-            [jobId]
-        );
-        return result.rows[0] || null;
-    } finally {
-        client.release();
+        const result = await prisma.crawler_jobs.findUnique({
+            where: { id: jobId }
+        });
+
+        if (!result) return null;
+
+        return sanitizeJob(result);
+    } catch (error) {
+        console.error("Error in getCrawlerJob:", error);
+        throw new Error("Failed to retrieve crawler job.");
     }
 }
 
 /**
  * Lists crawler jobs with optional filters
- * @param filters Optional filters for the query
- * @returns Array of job records
  */
 export async function listCrawlerJobs(filters?: {
     state?: string;
-    status?: CrawlerJob['status'];
+    status?: CrawlerJobStatus;
     limit?: number;
     offset?: number;
 }): Promise<CrawlerJob[]> {
-    const client = await pool.connect();
     try {
-        const conditions: string[] = [];
-        const values: any[] = [];
-        let paramCount = 1;
+        const results = await prisma.crawler_jobs.findMany({
+            where: {
+                state: filters?.state,
+                status: filters?.status
+            },
+            orderBy: {
+                created_at: 'desc'
+            },
+            take: filters?.limit,
+            skip: filters?.offset
+        });
 
-        if (filters?.state) {
-            conditions.push(`state = $${paramCount}`);
-            values.push(filters.state);
-            paramCount++;
-        }
-
-        if (filters?.status) {
-            conditions.push(`status = $${paramCount}`);
-            values.push(filters.status);
-            paramCount++;
-        }
-
-        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-        const limitClause = filters?.limit ? `LIMIT ${filters.limit}` : '';
-        const offsetClause = filters?.offset ? `OFFSET ${filters.offset}` : '';
-
-        const result = await client.query(
-            `SELECT * FROM crawler_jobs
-             ${whereClause}
-             ORDER BY created_at DESC
-             ${limitClause}
-             ${offsetClause}`,
-            values
-        );
-        return result.rows;
-    } finally {
-        client.release();
+        return results.map(sanitizeJob);
+    } catch (error) {
+        console.error("Error in listCrawlerJobs:", error);
+        throw new Error("Failed to list crawler jobs.");
     }
 }
 
 /**
  * Updates the progress of a crawler job
- * @param jobId UUID of the job to update
- * @param webUrlsFound Number of web URLs found
- * @param pdfUrlsFound Number of PDF URLs found
  */
 export async function updateCrawlerJobProgress(
     jobId: string,
     webUrlsFound: number,
     pdfUrlsFound: number
 ): Promise<void> {
-    const client = await pool.connect();
     try {
-        await client.query(
-            `UPDATE crawler_jobs 
-             SET web_urls_found = $2,
-                 pdf_urls_found = $3
-             WHERE id = $1`,
-            [jobId, webUrlsFound, pdfUrlsFound]
-        );
-    } finally {
-        client.release();
+        await prisma.crawler_jobs.update({
+            where: { id: jobId },
+            data: {
+                web_urls_found: webUrlsFound,
+                pdf_urls_found: pdfUrlsFound
+            }
+        });
+    } catch (error) {
+        console.error(`Error updating crawler job progress for ${jobId}:`, error);
+        throw new Error(`Failed to update progress for job ${jobId}.`);
     }
 }
 
 /**
  * Marks a job as failed with an error message
- * @param jobId UUID of the job to update
- * @param errorMessage Error message to store
  */
 export async function markCrawlerJobAsFailed(
     jobId: string,
     errorMessage: string
 ): Promise<void> {
-    await updateCrawlerJobStatus(jobId, 'failed', { error_message: errorMessage });
+    try {
+        await updateCrawlerJobStatus(jobId, 'failed', { error_message: errorMessage });
+    } catch (error) {
+        console.error(`Error marking job ${jobId} as failed:`, error);
+        throw new Error(`Failed to mark job ${jobId} as failed.`);
+    }
 }
+
+/**
+ * Global error handlers for uncaught exceptions and unhandled rejections
+ */
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+    console.error("Uncaught Exception:", error);
+    process.exit(1); // Force exit to prevent undefined behavior
+});

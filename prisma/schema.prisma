@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model channels {
+  id                  String                @id @unique
+  city                String                @db.VarChar(250)
+  state               String?               @db.VarChar(250)
+  gender              gender_enum?
+  dating_preference   gender_enum?
+  created_at          DateTime              @default(now())
+  name                String                @db.VarChar(250)
+  location_id         String?
+  cities              cities?               @relation(fields: [location_id], references: [id])
+  posts               posts[]
+  subscribed_channels subscribed_channels[]
+
+  @@index([dating_preference], map: "channels_dating_preference_index")
+  @@index([gender], map: "channels_gender_index")
+  @@index([id], map: "channels_id_index")
+  @@index([name], map: "channels_name_index")
+}
+
+model chat_messages {
+  id                                     String   @id @unique
+  sender_id                              String
+  receiver_id                            String
+  chat_id                                String
+  text                                   String?
+  attachments                            String[]
+  created_at                             DateTime @default(now())
+  read_status                            Boolean  @default(false)
+  chats                                  chats    @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+  users_chat_messages_receiver_idTousers users    @relation("chat_messages_receiver_idTousers", fields: [receiver_id], references: [id])
+  users_chat_messages_sender_idTousers   users    @relation("chat_messages_sender_idTousers", fields: [sender_id], references: [id])
+}
+
+model chats {
+  id            String          @id @unique
+  created_at    DateTime        @default(now())
+  members       String[]
+  updated_at    DateTime        @default(now())
+  preview       Json?
+  chat_messages chat_messages[]
+}
+
+model cities {
+  id             String     @id @unique
+  city           String
+  state          String
+  latitude       Float
+  longitude      Float
+  population     Int
+  rank           Int
+  channel_exists Boolean    @default(false)
+  channels       channels[]
+  users          users[]
+}
+
+model comments {
+  id               String             @id @unique
+  post_id          String
+  user_id          String
+  text             String
+  created_at       DateTime           @default(now())
+  is_anonymous     Boolean?           @default(false)
+  reply_count      Int                @default(0)
+  updated_at       DateTime           @default(now())
+  posts            posts              @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  users            users              @relation(fields: [user_id], references: [id])
+  comments_replies comments_replies[]
+
+  @@unique([id, post_id])
+  @@index([text(ops: raw("gin_trgm_ops"))], map: "comments_text_index", type: Gin)
+}
+
+model comments_replies {
+  id           String   @id @unique
+  comment_id   String
+  user_id      String
+  text         String
+  created_at   DateTime @default(now())
+  is_anonymous Boolean? @default(false)
+  updated_at   DateTime @default(now())
+  comments     comments @relation(fields: [comment_id], references: [id], onDelete: Cascade)
+  users        users    @relation(fields: [user_id], references: [id])
+
+  @@unique([id, comment_id])
+  @@index([text(ops: raw("gin_trgm_ops"))], map: "comments_replies_text_index", type: Gin)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model crawler_jobs {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  state            String    @db.VarChar(2)
+  urls             Json
+  max_urls         Int?      @default(1000)
+  status           String    @default("pending") @db.VarChar(20)
+  web_urls_found   Int?      @default(0)
+  pdf_urls_found   Int?      @default(0)
+  error_message    String?
+  started_at       DateTime? @default(now()) @db.Timestamptz(6)
+  completed_at     DateTime? @db.Timestamptz(6)
+  duration_seconds Decimal?  @db.Decimal(10, 2)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at])
+  @@index([state])
+  @@index([status])
+}
+
+model documents {
+  id        BigInt                 @id @default(autoincrement())
+  content   String?
+  metadata  Json?
+  embedding Unsupported("vector")?
+  state     String?
+
+  @@index([embedding], map: "hnsw_embedding_idx")
+}
+
+model facial_rekognition {
+  id         String
+  face_id    String   @db.VarChar(100)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  aliases    String[]
+  post_ids   String[]
+
+  @@id([id, created_at])
+  @@index([face_id], map: "face_id_index")
+}
+
+model feature_flags {
+  id           String   @id @unique
+  feature_name String
+  is_enabled   Boolean
+  created_at   DateTime
+}
+
+model posts {
+  id                 String     @id @unique
+  user_id            String
+  channel_id         String
+  is_anonymous       Boolean
+  person_of_interest String?
+  title              String
+  text               String?
+  attachments        Json?
+  created_at         DateTime   @default(now())
+  updated_at         DateTime   @default(now())
+  is_poll            Boolean?   @default(false)
+  options            Json?
+  responses          Json?
+  tag                tag_enum?
+  comments           comments[]
+  channels           channels   @relation(fields: [channel_id], references: [id])
+  users              users      @relation(fields: [user_id], references: [id])
+
+  @@index([channel_id], map: "posts_channel_id_index")
+  @@index([person_of_interest], map: "posts_person_of_interest_index")
+  @@index([text(ops: raw("gin_trgm_ops"))], map: "posts_text_index", type: Gin)
+  @@index([title(ops: raw("gin_trgm_ops"))], map: "posts_title_index", type: Gin)
+  @@index([user_id], map: "posts_user_id_index")
+}
+
+model reported_comment_replies {
+  id               String           @id @unique
+  user_id          String
+  comment_reply_id String
+  status           status_type_enum @default(SUBMITTED)
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @default(now())
+  users            users            @relation(fields: [user_id], references: [id])
+
+  @@index([comment_reply_id], map: "reported_comment_reply_id_index")
+  @@index([status], map: "reported_comment_reply_status_index")
+  @@index([user_id], map: "reported_comment_reply_user_id_index")
+}
+
+model reported_comments {
+  id         String           @id @unique
+  user_id    String
+  comment_id String
+  status     status_type_enum @default(SUBMITTED)
+  created_at DateTime         @default(now())
+  updated_at DateTime         @default(now())
+  users      users            @relation(fields: [user_id], references: [id])
+
+  @@index([comment_id], map: "reported_comment_id_index")
+  @@index([status], map: "reported_comments_status_index")
+  @@index([user_id], map: "reported_comments_user_id_index")
+}
+
+model reported_posts {
+  id         String           @id @unique
+  user_id    String
+  post_id    String
+  status     status_type_enum @default(SUBMITTED)
+  created_at DateTime         @default(now())
+  updated_at DateTime         @default(now())
+  users      users            @relation(fields: [user_id], references: [id])
+
+  @@index([post_id], map: "reported_post_id_index")
+  @@index([status], map: "reported_posts_status_index")
+  @@index([user_id], map: "reported_posts_user_id_index")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+model subscribed_channels {
+  id         String   @id @unique
+  user_id    String
+  channel_id String
+  channels   channels @relation(fields: [channel_id], references: [id])
+  users      users    @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, channel_id])
+  @@index([channel_id], map: "subscribed_channels_channel_id_index")
+  @@index([user_id, channel_id], map: "subscribed_channels_combined_index")
+  @@index([user_id], map: "subscribed_channels_user_id_index")
+}
+
+model support_issues {
+  id          String           @id @unique
+  user_id     String?
+  title       String
+  description String
+  status      status_type_enum @default(SUBMITTED)
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @default(now())
+  users       users?           @relation(fields: [user_id], references: [id])
+
+  @@index([user_id], map: "support_issues_user_id_index")
+}
+
+model user_subscriptions {
+  phone_number                String?
+  email                       String?
+  product_id                  String?
+  entitlement_id              String?
+  country_code                String?
+  app_user_id                 String    @unique @db.VarChar(250)
+  cancel_reason               String?
+  price                       Int?
+  currency                    String?
+  type                        String?
+  takehome_percentage         Int?
+  created_at                  DateTime  @default(now())
+  purchased_at_ms             DateTime?
+  expiration_at_ms            DateTime?
+  price_in_purchased_currency Int?
+
+  @@index([app_user_id], map: "user_subscriptions_app_user_id_index")
+  @@index([phone_number], map: "user_subscriptions_phone_number_index")
+}
+
+model users {
+  id                                             String                     @id @unique
+  username                                       String?                    @db.VarChar(250)
+  phone_number                                   String?                    @default("")
+  email                                          String?
+  first_name                                     String?                    @db.VarChar(250)
+  last_name                                      String?                    @db.VarChar(250)
+  gender                                         gender_enum?               @default(UNDEFINED)
+  dating_preference                              gender_enum?               @default(UNDEFINED)
+  created_at                                     DateTime                   @default(now())
+  updated_at                                     DateTime                   @default(now())
+  avatar_url                                     String?
+  is_user_onboarded                              Boolean                    @default(false)
+  date_of_birth                                  String?
+  location_id                                    String?
+  purchased_subscription                         Boolean                    @default(false)
+  device_token                                   String?                    @db.VarChar(250)
+  email_notifications_enabled                    Boolean                    @default(false)
+  push_notifications_enabled                     Boolean                    @default(false)
+  sns_endpoint_arn                               String?
+  is_deleted                                     Boolean?                   @default(false)
+  blocked_users                                  String[]
+  login_method                                   String?
+  external_provider_id                           String?                    @db.VarChar(250)
+  chat_messages_chat_messages_receiver_idTousers chat_messages[]            @relation("chat_messages_receiver_idTousers")
+  chat_messages_chat_messages_sender_idTousers   chat_messages[]            @relation("chat_messages_sender_idTousers")
+  comments                                       comments[]
+  comments_replies                               comments_replies[]
+  posts                                          posts[]
+  reported_comment_replies                       reported_comment_replies[]
+  reported_comments                              reported_comments[]
+  reported_posts                                 reported_posts[]
+  subscribed_channels                            subscribed_channels[]
+  support_issues                                 support_issues[]
+  cities                                         cities?                    @relation(fields: [location_id], references: [id])
+
+  @@index([id, created_at], map: "users_id_created_at_index")
+  @@index([phone_number], map: "users_phone_number_index")
+}
+
+enum gender_enum {
+  MALE
+  FEMALE
+  NON_BINARY
+  UNDEFINED
+  EVERYONE
+}
+
+enum status_type_enum {
+  SUBMITTED
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum tag_enum {
+  QUESTION
+  GIVING_ADVICE
+  I_NEED_ADVICE
+  SUPPORT_NEEDED
+  SUCCESS_STORY
+  UNDEFINED
+  JUST_VENTING
+}

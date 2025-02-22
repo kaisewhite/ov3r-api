@@ -1,7 +1,6 @@
 import { CheerioCrawler, EnqueueStrategy, Configuration } from 'crawlee';
 import robotsParser from 'robots-parser';
-/* import fs from 'fs';
-import path from 'path'; */
+
 // Function to check robots.txt
 async function canCrawl(url: string) {
     try {
@@ -16,43 +15,7 @@ async function canCrawl(url: string) {
     }
 }
 
-/**
- * Downloads a file from a URL and saves it to the specified directory.
- * @param url The URL of the file to download.
- * @param outputDir The directory to save the file in.
- */
-/* async function downloadFile(url: string, outputDir: string) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to download ${url}: ${response.statusText}`);
-        }
 
-        if (!response.body) {
-            throw new Error(`No response body from ${url}`);
-        }
-
-        // Extract the filename from the URL
-        const filename = path.basename(new URL(url).pathname) || 'downloaded_file';
-        const filePath = path.join(outputDir, filename);
-
-        // Ensure the output directory exists
-        if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir, { recursive: true });
-        }
-
-        // Create a buffer from the response body
-        const buffer = await response.arrayBuffer();
-        const nodeBuffer = Buffer.from(buffer);
-
-        // Write the buffer to file
-        await fs.promises.writeFile(filePath, nodeBuffer);
-
-        console.log(`Downloaded: ${url} -> ${filePath}`);
-    } catch (error) {
-        console.error(`Error downloading ${url}:`, error);
-    }
-} */
 
 interface CrawlResult {
     webUrls: string[];

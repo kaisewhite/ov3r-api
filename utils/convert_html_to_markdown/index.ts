@@ -1,35 +1,73 @@
 import TurndownService from 'turndown';
 
 /**
- * Converts HTML content to Markdown format
- * 
- * @param html - The HTML content to convert
- * @returns string - The converted Markdown content
- * 
- * @example
- * ```typescript
- * const markdown = await convertHtmlToMarkdown('<h1>Hello</h1><p>World</p>');
- * console.log(markdown);
- * // Output:
- * // # Hello
- * // World
- * ```
+ * Converts HTML content to Markdown with cleanup rules
  */
 export const convertHtmlToMarkdown = (html: string): string => {
+    if (!html || typeof html !== 'string') {
+        throw new Error('Invalid input: HTML content must be a non-empty string');
+    }
+
+    const turndownService = createTurndownService();
+    let markdown = turndownService.turndown(html);
+
+    // Post-processing cleanup
+    return markdown
+        .replace(/\n{3,}/g, '\n\n') // Remove excessive blank lines
+        .replace(/[ \t]+$/gm, '')   // Trim trailing spaces
+        .trim() + '\n';             // Ensure single trailing newline
+};
+
+/**
+ * Creates and configures a TurndownService instance with custom rules
+ */
+const createTurndownService = (): TurndownService => {
     const turndownService = new TurndownService({
-        headingStyle: 'atx',      // Use # style headings
-        codeBlockStyle: 'fenced', // Use ``` style code blocks
-        emDelimiter: '_',         // Use _text_ for emphasis
-        bulletListMarker: '-',    // Use - for bullet lists
+        headingStyle: 'atx',
+        codeBlockStyle: 'fenced',
+        emDelimiter: '_',
+        bulletListMarker: '-',
+        hr: '---',
+        strongDelimiter: '**',
+        linkStyle: 'inlined',
+        linkReferenceStyle: 'full',
+        preformattedCode: true
     });
 
-    // Additional rules can be added here if needed
-    turndownService.addRule('removeEmptyParagraphs', {
-        filter: (node) => {
-            return node.nodeName === 'P' && (node.textContent?.trim() ?? '') === '';
-        },
-        replacement: () => ''
-    });
+    // Cleanup rules
+    turndownService
+        .addRule('removeEmptyParagraphs', {
+            filter: (node) => node.nodeName === 'P' && !node.textContent?.trim(),
+            replacement: () => ''
+        })
+        .addRule('removeEmptyLinks', {
+            filter: (node) => node.nodeName === 'A' && isInvalidLink(node as HTMLAnchorElement),
+            replacement: () => ''
+        })
+        .addRule('removeScripts', {
+            filter: ['script', 'style', 'iframe'],
+            replacement: () => ''
+        })
+        .addRule('tableAlignment', {
+            filter: ['th', 'td'],
+            replacement: (content, node) => formatTableCell(content, node as HTMLTableCellElement)
+        });
 
-    return turndownService.turndown(html);
-}
+    return turndownService;
+};
+
+/**
+ * Checks if a link is empty or invalid
+ */
+const isInvalidLink = (anchor: HTMLAnchorElement): boolean =>
+    !anchor.href || anchor.href === '#' || anchor.href.startsWith('javascript:');
+
+/**
+ * Formats table cells with alignment
+ */
+const formatTableCell = (content: string, node: HTMLTableCellElement): string => {
+    const align = node.getAttribute('align') || '';
+    return align === 'center' ? ` ${content} ` :
+           align === 'right' ? ` ${content}` :
+           `${content} `;
+};
