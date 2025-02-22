@@ -1,13 +1,13 @@
 import { config } from "dotenv";
 config({ path: ".env" });
 
-import { requiresJavaScript } from "../requires_javascript/index";
-import { crawlUrlsWithCheerio } from "../cheerio_crawler/index";
-import { crawlUrlsWithPlaywright } from "../playwright_crawler/index";
-import { convertHtmlToMarkdown } from "../convert_html_to_markdown/index";
-import { insertDocuments } from "../insert_into_vector_db/index";
-import { semanticChunk, ChunkWithAll } from "../chunker";
-import { handlePreviouslyCrawledUrls } from "../previously_crawled/index";
+import { requiresJavaScript } from "../requires_javascript/index.js";
+import { crawlUrlsWithCheerio } from "../cheerio_crawler/index.js";
+import { crawlUrlsWithPlaywright } from "../playwright_crawler/index.js";
+import { convertHtmlToMarkdown } from "../convert_html_to_markdown/index.js";
+import { insertDocuments } from "../insert_into_vector_db/index.js";
+import { semanticChunk, ChunkWithAll } from "../chunker/index.js";
+import { handlePreviouslyCrawledUrls } from "../previously_crawled/index.js";
 
 export async function processUrlsToEmbeddings(urls: string[], state: string): Promise<void> {
   try {

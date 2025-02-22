@@ -1,9 +1,9 @@
 import type { Document } from "@langchain/core/documents";
-import { customEmbeddings } from "../generate_embeddings";
+import { customEmbeddings } from "../generate_embeddings/index.js";
 
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 
-import { pgConfig } from "../vector_db/config";
+import { pgConfig } from "../vector_db/config.js";
   
 
   

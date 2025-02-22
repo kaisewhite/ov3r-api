@@ -1,4 +1,4 @@
-FROM public.ecr.aws/bitnami/node:22.14.0-debian-12-r4
+FROM public.ecr.aws/bitnami/node:18.20.2-debian-12-r6
 
 RUN apt-get update
 

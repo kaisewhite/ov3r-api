@@ -1,9 +1,9 @@
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
-import { pgConfig } from "../vector_db/config";
+import { pgConfig } from "../vector_db/config.js";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from "@langchain/core/prompts";
-import { customEmbeddings } from "../generate_embeddings";
-import redis from "../../configurations/redis";
+import { customEmbeddings } from "../generate_embeddings/index.js";
+import redis from "../../configurations/redis/index.js";
 import crypto from "crypto";
 
 const vectorStore = await PGVectorStore.initialize(customEmbeddings, pgConfig);

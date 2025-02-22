@@ -1,6 +1,6 @@
 import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
-import { pgConfig } from "../vector_db/config";
-import { customEmbeddings } from "../generate_embeddings";
+import { pgConfig } from "../vector_db/config.js";
+import { customEmbeddings } from "../generate_embeddings/index.js";
 import pkg from 'pg';
 const { Pool } = pkg;
 

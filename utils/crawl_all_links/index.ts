@@ -1,7 +1,7 @@
 import { CheerioCrawler, EnqueueStrategy, Configuration } from 'crawlee';
 import robotsParser from 'robots-parser';
-import fs from 'fs';
-import path from 'path';
+/* import fs from 'fs';
+import path from 'path'; */
 // Function to check robots.txt
 async function canCrawl(url: string) {
     try {

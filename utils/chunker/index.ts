@@ -22,7 +22,7 @@ Similarity Calculation: Cosine similarity scores are calculated for each sentenc
 Chunk Formation: Sentences are grouped into chunks based on the similarity threshold and max token size.
  */
 
-import { generateEmbeddings } from "../generate_embeddings/index";
+import { generateEmbeddings } from "../generate_embeddings/index.js";
 
 /**
  * Computes the cosine similarity between two vectors.
