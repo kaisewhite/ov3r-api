@@ -30,15 +30,14 @@ COPY package*.json ./
 RUN npm install && \
     npm install -g typescript pm2 ts-node
 
-# Bundle app source
+# Copy source code
 COPY . .
 
-# Build TypeScript
+# Build TypeScript code
 RUN npm run build
 
 EXPOSE 5000
-EXPOSE 8080
 EXPOSE 80
 
 # Run the compiled JavaScript using PM2
-CMD ["pm2-runtime", "dist/index.js", "--no-daemon"]
+CMD ["pm2-runtime", "dist/src/index.js", "--no-daemon"]
