@@ -12,6 +12,13 @@ const router = express.Router();
  *     summary: Process URLs and generate embeddings
  *     description: Takes an array of URLs and processes them to generate embeddings
  *     tags: [Crawler]
+ *     parameters:
+ *       - in: query
+ *         name: state
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [AL, AK, AZ, AR, CA, CO, CT, DE, FL, GA, HI, ID, IL, IN, IA, KS, KY, LA, ME, MD, MA, MI, MN, MS, MO, MT, NE, NV, NH, NJ, NM, NY, NC, ND, OH, OK, OR, PA, RI, SC, SD, TN, TX, UT, VT, VA, WA, WV, WI, WY]
  *     requestBody:
  *       required: true
  *       content:
@@ -28,10 +35,6 @@ const router = express.Router();
  *                   type: string
  *                 description: Array of URLs to process
  *                 example: ["https://example.com"]
- *               state:
- *                 type: string
- *                 description: The state associated with the URLs
- *                 example: "New York"
  *               maxUrls:
  *                 type: integer
  *                 description: The maximum number of URLs to crawl
@@ -47,7 +50,8 @@ const router = express.Router();
 router.post("/url", async (req: Request, res: Response) => {
   try {
     console.log("Received request body:", JSON.stringify(req.body, null, 2));
-    const { urls, state, maxUrls = 1000 } = req.body;
+    const { urls, maxUrls = 1000 } = req.body;
+    const state = req.query.state as string;
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       res.status(400).json({

@@ -10,6 +10,13 @@ const router = express.Router();
  *     summary: Ask a question about the documentation
  *     description: Ask a question about the documentation using RAG (Retrieval-Augmented Generation)
  *     tags: [Query]
+ *     parameters:
+ *       - in: query
+ *         name: state
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [AL, AK, AZ, AR, CA, CO, CT, DE, FL, GA, HI, ID, IL, IN, IA, KS, KY, LA, ME, MD, MA, MI, MN, MS, MO, MT, NE, NV, NH, NJ, NM, NY, NC, ND, OH, OK, OR, PA, RI, SC, SD, TN, TX, UT, VT, VA, WA, WV, WI, WY]
  *     requestBody:
  *       required: true
  *       content:
@@ -23,10 +30,6 @@ const router = express.Router();
  *                 type: string
  *                 description: The question to ask about the documentation
  *                 example: "What is the difference between a Class A and Class B distiller's license?"
- *               state:
- *                 type: string
- *                 description: The state associated with the URLs
- *                 example: "New York"
  *     responses:
  *       200:
  *         description: Question answered successfully
@@ -62,7 +65,8 @@ const router = express.Router();
  */
 router.post('/ask', async (req: Request, res: Response) => {
     try {
-        const { question, state } = req.body;
+        const { question } = req.body;
+        const state = req.query.state as string;
 
         if (!question || typeof question !== 'string') {
             res.status(400).json({
