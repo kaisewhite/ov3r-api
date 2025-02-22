@@ -1,5 +1,5 @@
-import express, { Request, Response } from 'express';
-import { answerQuestion } from '../../utils/query';
+import express, { Request, Response } from "express";
+import { answerQuestion } from "../../utils/query/index.js";
 
 const router = express.Router();
 

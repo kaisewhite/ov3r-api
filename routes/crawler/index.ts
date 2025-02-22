@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
-import { processUrlsToEmbeddings } from "../../utils/process_urls_to_embeddings";
-import { crawlAllLinks } from "../../utils/crawl_all_links";
-import { uploadFilesFromUrls } from "../../utils/upload_to_s3_bucket";
+import { processUrlsToEmbeddings } from "../../utils/process_urls_to_embeddings/index.js";
+import { crawlAllLinks } from "../../utils/crawl_all_links/index.js";
+import { uploadFilesFromUrls } from "../../utils/upload_to_s3_bucket/index.js";
 
 const router = express.Router();
 
