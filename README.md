@@ -1,6 +1,29 @@
-# Documentation RAG Agent
+# OV3R API
 
-An intelligent documentation crawler and RAG (Retrieval-Augmented Generation) agent built using LangChain, Supabase, and OpenAI. The agent can crawl documentation websites, store content in a vector database, and provide intelligent answers to user questions by retrieving and analyzing relevant documentation chunks.
+## Overview
+OV3R API is a sophisticated Retrieval-Augmented Generation (RAG) system built with TypeScript and Node.js. It provides a robust platform for intelligent web content processing, featuring advanced crawling capabilities, smart content transformation, and efficient vector-based retrieval.
+
+### Key Features
+- **Intelligent Web Crawling**: Automatically crawls and extracts content from web pages while respecting robots.txt rules
+- **Smart Content Processing**: Converts HTML to clean, standardized Markdown with customizable formatting rules
+- **Vector Database Integration**: Stores and retrieves documents using efficient vector embeddings
+- **RESTful API Interface**: Clean, well-documented API endpoints for crawling and querying content
+- **Real-time Job Tracking**: Monitor and manage crawling jobs with detailed status updates
+- **Scalable Architecture**: Built with modern TypeScript and follows best practices for maintainability
+
+### Use Cases
+- Building knowledge bases from web content
+- Creating intelligent document retrieval systems
+- Developing question-answering applications
+- Processing and standardizing web content at scale
+
+## Technical Stack
+- TypeScript/Node.js
+- Express.js for API routing
+- Prisma for database management
+- Redis for caching
+- Vector database for efficient content retrieval
+- Turndown for HTML-to-Markdown conversion
 
 ## Features
 
