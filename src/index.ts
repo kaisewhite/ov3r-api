@@ -3,8 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import crawlerRoutes from '../routes/crawler/index.js';
-import queryRoutes from '../routes/query/index.js';
+import comprehendRoutes from '../routes/comprehend/index.js';
 
 // Load environment variables
 config({ path: '.env' });
@@ -98,8 +97,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // Routes
-app.use('/v1/crawler', crawlerRoutes);
-app.use('/v1/query', queryRoutes);
+app.use('/v1/comprehend', comprehendRoutes);
 
 // Error handling middleware
 interface ErrorWithMessage extends Error {

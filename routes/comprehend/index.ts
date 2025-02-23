@@ -3,16 +3,111 @@ import { crawlAllLinks } from "../../utils/crawl_all_links/index.js";
 import { processUrlsToEmbeddings } from "../../utils/process_urls_to_embeddings/index.js";
 import { uploadFilesFromUrls } from "../../utils/upload_to_s3_bucket/index.js";
 import { createCrawlerJob, updateCrawlerJobStatus, getCrawlerJob, listCrawlerJobs, updateCrawlerJobProgress, markCrawlerJobAsFailed } from "../../utils/track_crawler_jobs/index.js";
+import { answerQuestion } from "../../utils/query/index.js";
 
 const router = express.Router();
 
 /**
  * @swagger
- * /v1/crawler/url:
+ * /v1/comprehend/query:
+ *   post:
+ *     summary: Ask a question about the documentation
+ *     description: Ask a question about the documentation using RAG (Retrieval-Augmented Generation)
+ *     tags: [Comprehend]
+ *     parameters:
+ *       - in: query
+ *         name: state
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [AL, AK, AZ, AR, CA, CO, CT, DE, FL, GA, HI, ID, IL, IN, IA, KS, KY, LA, ME, MD, MA, MI, MN, MS, MO, MT, NE, NV, NH, NJ, NM, NY, NC, ND, OH, OK, OR, PA, RI, SC, SD, TN, TX, UT, VT, VA, WA, WV, WI, WY]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - question
+ *             properties:
+ *               question:
+ *                 type: string
+ *                 description: The question to ask about the documentation
+ *                 example: "What is the difference between a Class A and Class B distiller's license?"
+ *     responses:
+ *       200:
+ *         description: Question answered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 answer:
+ *                   type: string
+ *                   description: The answer to the question
+ *                 sources:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: List of source URLs used to generate the answer
+ *                 timings:
+ *                   type: object
+ *                   properties:
+ *                     totalDuration:
+ *                       type: number
+ *                       description: Total time taken to process the query in seconds
+ *                     vectorSearchDuration:
+ *                       type: number
+ *                       description: Time taken for vector search in seconds
+ *                     llmDuration:
+ *                       type: number
+ *                       description: Time taken for LLM response in seconds
+ *       400:
+ *         description: Invalid request parameters
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/query', async (req: Request, res: Response) => {
+  try {
+      const { question } = req.body;
+      const state = req.query.state as string;
+
+      if (!question || typeof question !== 'string') {
+          res.status(400).json({
+              error: 'Invalid request',
+              message: 'Question must be a non-empty string'
+          });
+          return;
+      }
+
+   
+
+      // Get answer using RAG
+      const result = await answerQuestion(question, state);
+      console.log("Passed in the following State:", state);
+  
+
+      res.json({
+          answer: result.content,
+          sources: result.sources,
+      });
+  } catch (error) {
+      console.error('Error processing question:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({
+          error: 'Failed to process question',
+          message: errorMessage
+      });
+  }
+});
+
+/**
+ * @swagger
+ * /v1/comprehend/crawl/url:
  *   post:
  *     summary: Process URLs and generate embeddings
  *     description: Takes an array of URLs and processes them to generate embeddings
- *     tags: [Crawler]
+ *     tags: [Comprehend]
  *     parameters:
  *       - in: query
  *         name: state
@@ -47,7 +142,7 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.post("/url", async (req: Request, res: Response) => {
+router.post("/crawl/url", async (req: Request, res: Response) => {
   try {
     console.log("Received request body:", JSON.stringify(req.body, null, 2));
     const { urls, maxUrls = 1000 } = req.body;
@@ -156,11 +251,11 @@ router.post("/url", async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /v1/crawler/url/in-background:
+ * /v1/comprehend/crawl/website:
  *   post:
  *     summary: Process URLs and generate embeddings in the background
  *     description: Takes an array of URLs and processes them asynchronously without waiting for completion
- *     tags: [Crawler]
+ *     tags: [Comprehend]
  *     parameters:
  *       - in: query
  *         name: state
@@ -195,7 +290,7 @@ router.post("/url", async (req: Request, res: Response) => {
  *       500:
  *         description: Internal server error
  */
-router.post("/url/in-background", async (req: Request, res: Response) => {
+router.post("/crawl/website", async (req: Request, res: Response) => {
   try {
     console.log("Received background processing request:", JSON.stringify(req.body, null, 2));
     const { urls, maxUrls = 1000 } = req.body;
