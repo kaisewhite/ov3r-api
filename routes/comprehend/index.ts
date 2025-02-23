@@ -365,7 +365,11 @@ router.post("/crawl/website", async (req: Request, res: Response) => {
           // Process URLs and generate embeddings
           console.log("Starting background embedding generation for", crawlResult.webUrls.length, "URLs");
           await processUrlsToEmbeddings(crawlResult.webUrls, state);
-          await uploadFilesFromUrls(crawlResult.pdfUrls, process.env.S3_BUCKET_NAME || "", `states/${state}`);
+          
+          // Only attempt to upload PDFs if any were found
+          if (crawlResult.pdfUrls.length > 0) {
+            await uploadFilesFromUrls(crawlResult.pdfUrls, process.env.S3_BUCKET_NAME || "", `states/${state}`);
+          }
           
           // Mark job as completed
           await updateCrawlerJobStatus(job.id, 'completed', {
